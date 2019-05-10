@@ -79,6 +79,11 @@ void ANPC::TraceAndRotateWarpLocation() {
 
 	FHitResult hitRes;
 	auto location = GetActorLocation();
+	if (!m_Player)
+	{
+		UE_LOG(LogTemp, Error, TEXT("NO CHARACTER SETUPED"));
+		return;
+	}
 	GetWorld()->LineTraceSingleByChannel(hitRes, location, m_Player->GetActorLocation(), ECollisionChannel::ECC_Visibility);
 
 	auto diff = hitRes.TraceStart - hitRes.TraceEnd;

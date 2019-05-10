@@ -11,6 +11,8 @@
 #include "Runtime/Engine/Public/TimerManager.h"
 #include "OverlapingCone.h"
 #include "NPC.h"
+#include "Classes/Components/StaticMeshComponent.h"
+#include "ColisionStaticMeshComponent.h"
 //////////////////////////////////////////////////////////////////////////
 // AMyProjectCharacter
 
@@ -45,6 +47,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	m_OverlapingMesh = CreateDefaultSubobject<UColisionStaticMeshComponent>("overlap mesh");
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
@@ -142,43 +145,43 @@ void AMyProjectCharacter::MoveRight(float Value)
 	}
 }
 
-//
-//void AMyProjectCharacter::BeginPlay() {
-//
-//
-//	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::FindCurrentEnemy, 0.01f, true);
-//
-//
-//}
-//void AMyProjectCharacter::FindCurrentEnemy() {
-//
-//	TMap<ANPC*, float> enemies;
-//	TSet<AActor*> overlapingActors;
-//	if (!m_OverlapingActor) {
-//		return;
-//	}
-//	m_OverlapingActor->GetOverlappingActors(overlapingActors,TSubclassOf<ANPC>());
-//	for (auto actor : overlapingActors) {
-//		auto npc = Cast<ANPC>(actor);
-//		auto distanceVector = GetActorLocation() - npc->GetActorLocation();
-//		float distance = distanceVector.X * distanceVector.X + distanceVector.Y * distanceVector.Y + distanceVector.Z * distanceVector.Z;
-//		enemies.Add(npc, distance);
-//	}
-//	int i = 0;
-//	for (auto npc : enemies) {
-//		npc.Key->ShowCross = false;
-//		if (i == 0) {
-//			m_LowestLength = npc.Value;
-//			EnemyToWarp = npc.Key;
-//			i++;
-//			continue;
-//		}
-//			
-//		if (npc.Value <= m_LowestLength)
-//			EnemyToWarp = npc.Key;
-//
-//	}
-//
-//	EnemyToWarp->ShowCross = true;*/
-//
-//}
+
+void AMyProjectCharacter::BeginPlay() {
+	Super::BeginPlay();
+
+	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::FindCurrentEnemy, 0.01f, true);
+
+
+}
+void AMyProjectCharacter::FindCurrentEnemy() {
+
+	TMap<ANPC*, float> enemies;
+	TSet<AActor*> overlapingActors;
+	if (!m_OverlapingMesh)
+		return;
+	m_OverlapingMesh->GetActorsToOverlap(overlapingActors, TSubclassOf<ANPC>());
+	for (auto actor : overlapingActors) {
+		auto npc = Cast<ANPC>(actor);
+		auto distanceVector = GetActorLocation() - npc->GetActorLocation();
+		float distance = distanceVector.X * distanceVector.X + distanceVector.Y * distanceVector.Y + distanceVector.Z * distanceVector.Z;
+		enemies.Add(npc, distance);
+	}
+	int i = 0;
+	for (auto npc : enemies) {
+		npc.Key->ShowCross = false;
+		UE_LOG(LogTemp, Warning, TEXT("enemy %s"), *npc.Key->GetName());
+		if (i == 0) {
+			m_LowestLength = npc.Value;
+			EnemyToWarp = npc.Key;
+			i++;
+			continue;
+		}
+			
+		if (npc.Value <= m_LowestLength)
+			EnemyToWarp = npc.Key;
+
+	}
+	if(EnemyToWarp)
+		EnemyToWarp->ShowCross = true;
+
+}

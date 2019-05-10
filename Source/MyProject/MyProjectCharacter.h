@@ -70,6 +70,13 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	void Warp();
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Overlaping")
+	class UColisionStaticMeshComponent * m_OverlapingMesh;
+	UFUNCTION()
+	void FindCurrentEnemy();
+	float m_LowestLength;
+	class ANPC* EnemyToWarp;
+	virtual void BeginPlay() override;
+	FTimerHandle m_TimerHandle;
 };
 
