@@ -30,6 +30,11 @@ public:
 		float BaseLookUpRate;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool IsInWarp = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool CanWarp = true;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool CanMove = true;
 protected:
 
 	/** Resets HMD orientation in VR. */
@@ -72,11 +77,35 @@ public:
 	void Warp();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Overlaping")
 	class UColisionStaticMeshComponent * m_OverlapingMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
+		UStaticMeshComponent* m_Sword;
+
 	UFUNCTION()
 	void FindCurrentEnemy();
 	float m_LowestLength;
 	class ANPC* EnemyToWarp;
 	virtual void BeginPlay() override;
 	FTimerHandle m_TimerHandle;
+	void SetupWarpAnimation();
+
+	FVector m_CurrLocation;
+	FVector m_SwordLocation;
+	FRotator m_SwordRotation;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class UMaterialParameterCollectionInstance* m_MatParamCollection;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
+		USkeletalMesh* m_PostMesh;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
+		class UMaterialInterface* m_FadeMaterial;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
+		class UAnimationAsset* m_FadeAnimation;
+
+	class ASkeletalMeshActor* CreatePostMesh(const FVector& pos);
+	ASkeletalMeshActor* clone = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
+		float KEK = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
+		float LOL = 0;
 };
 

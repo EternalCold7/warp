@@ -12,7 +12,11 @@
 #include "OverlapingCone.h"
 #include "NPC.h"
 #include "Classes/Components/StaticMeshComponent.h"
+#include "Classes/Components/SkeletalMeshComponent.h"
 #include "ColisionStaticMeshComponent.h"
+#include "Runtime/Engine/Classes/Kismet/KismetMathLibrary.h"
+#include "Runtime/Engine/Classes/Materials/MaterialParameterCollectionInstance.h"
+#include "Runtime/Engine/Classes/Animation/SkeletalMeshActor.h"
 //////////////////////////////////////////////////////////////////////////
 // AMyProjectCharacter
 
@@ -48,6 +52,9 @@ AMyProjectCharacter::AMyProjectCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	m_OverlapingMesh = CreateDefaultSubobject<UColisionStaticMeshComponent>("overlap mesh");
+	m_Sword = CreateDefaultSubobject<UStaticMeshComponent>("swor");
+
+	m_Sword->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, FName("SwordSocket"));
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
@@ -106,8 +113,27 @@ void AMyProjectCharacter::TurnAtRate(float Rate)
 
 void AMyProjectCharacter::Warp()
 {
-	UE_LOG(LogTemp, Warning, TEXT("warp"));
-	IsInWarp = !IsInWarp;
+	if (!EnemyToWarp || !CanWarp)
+		return;
+	CanWarp = false;
+	IsInWarp = true;
+	CanMove = false;
+
+
+	auto rot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), EnemyToWarp->GetActorLocation());
+	SetActorRotation(rot);
+
+	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::SetupWarpAnimation, 1.f);
+
+
+
+
+
+
+
+
+
+
 }
 
 void AMyProjectCharacter::LookUpAtRate(float Rate)
@@ -120,6 +146,8 @@ void AMyProjectCharacter::MoveForward(float Value)
 {
 	if ((Controller != NULL) && (Value != 0.0f))
 	{
+		if (!CanMove)
+			return;
 		// find out which way is forward
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
@@ -134,6 +162,8 @@ void AMyProjectCharacter::MoveRight(float Value)
 {
 	if ( (Controller != NULL) && (Value != 0.0f) )
 	{
+		if (!CanMove)
+			return;
 		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
@@ -155,6 +185,8 @@ void AMyProjectCharacter::BeginPlay() {
 }
 void AMyProjectCharacter::FindCurrentEnemy() {
 
+	if (IsInWarp)
+		return;
 	TMap<ANPC*, float> enemies;
 	TSet<AActor*> overlapingActors;
 	if (!m_OverlapingMesh)
@@ -184,4 +216,35 @@ void AMyProjectCharacter::FindCurrentEnemy() {
 	if(EnemyToWarp)
 		EnemyToWarp->ShowCross = true;
 
+}
+void AMyProjectCharacter::SetupWarpAnimation() {
+	m_CurrLocation = GetActorLocation();
+	m_SwordLocation = m_Sword->GetComponentLocation();
+	m_SwordRotation = m_Sword->GetComponentRotation();
+	if (m_MatParamCollection)
+		m_MatParamCollection->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);
+
+	GetMesh()->GlobalAnimRateScale = KEK;
+	GetMesh()->SetVisibility(false);
+	clone = CreatePostMesh(GetActorLocation());
+}
+
+ASkeletalMeshActor* AMyProjectCharacter::CreatePostMesh(const FVector& pos) {
+	FActorSpawnParameters a;
+	a.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	a.bNoFail = true;
+
+	auto postMesh = GetWorld()->SpawnActor<ASkeletalMeshActor>(GetMesh()->GetComponentLocation(), GetMesh()->GetComponentRotation(),a);
+	
+	if (!postMesh)
+		return nullptr;
+	postMesh->GetSkeletalMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	postMesh->GetSkeletalMeshComponent()->SetSkeletalMesh(m_PostMesh);
+	postMesh->GetSkeletalMeshComponent()->SetMaterial(0, m_FadeMaterial);
+	postMesh->GetSkeletalMeshComponent()->SetMaterial(1, m_FadeMaterial);
+	postMesh->GetSkeletalMeshComponent()->PlayAnimation(m_FadeAnimation,false);
+	postMesh->GetSkeletalMeshComponent()->SetWorldLocation(pos);
+
+	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = LOL;
+	return postMesh;
 }
