@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Runtime/Engine/Classes/Components/TimelineComponent.h"
 #include "MyProjectCharacter.generated.h"
 
 UCLASS(config = Game)
@@ -92,7 +93,7 @@ public:
 	FVector m_SwordLocation;
 	FRotator m_SwordRotation;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UMaterialParameterCollectionInstance* m_MatParamCollection;
+		class UMaterialParameterCollection* m_MatParamCollection;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
 		USkeletalMesh* m_PostMesh;
@@ -107,5 +108,27 @@ public:
 		float KEK = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
 		float LOL = 0;
+
+	FOnTimelineFloat InterpCharFunction{};
+	FOnTimelineFloat InterpFOVFunction{};
+	FOnTimelineFloat InterpSwordFunction{};
+	FOnTimelineEvent TimelineFinished{};
+	class UTimelineComponent* m_Timeline;
+	UFUNCTION()
+		void CharTimelineFloatReturn(float value);
+	UFUNCTION()
+		void SwordTimelineFloatReturn(float value);
+	UFUNCTION()
+		void FOVTimelineFloatReturn(float value);
+	UFUNCTION()
+		void OnTimelineFinished();
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+		class UCurveFloat* m_CharCurve;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+		class UCurveFloat* m_SwordCurve;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+		class UCurveFloat* m_FOVCurve;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<class UCameraShake> m_CamShake = nullptr;
 };
 
