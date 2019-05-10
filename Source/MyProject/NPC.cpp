@@ -40,8 +40,10 @@ void ANPC::BeginPlay()
 		m_Timeline->SetLooping(false);
 		m_Timeline->SetIgnoreTimeDilation(true);
 	}
-	m_WarpLocation->SetWorldLocation( GetActorLocation());
-
+	auto actorLoc = GetActorLocation();
+	actorLoc.Z += 30;
+	m_WarpLocation->SetWorldLocation(actorLoc);
+	m_WidgetComponent->SetWorldLocation(actorLoc);
 
 	GetWorldTimerManager().SetTimer(FuzeTimerHandle, this, &ANPC::SetTarget, 0.01f, true);
 }
