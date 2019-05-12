@@ -15,8 +15,8 @@ class MYPROJECT_API ANPC : public ACharacter
 public:
 	// Sets default values for this character's properties
 	ANPC();
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class USceneComponent * m_WarpLocation = nullptr;
+	UPROPERTY(BlueprintReadOnly)
+	class USceneComponent* m_WarpLocation;
 
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

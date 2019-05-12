@@ -96,6 +96,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class UMaterialParameterCollection* m_MatParamCollection;
 
+
+	class UMaterialParameterCollectionInstance* m_MatColInst;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
 		USkeletalMesh* m_PostMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
@@ -114,7 +116,10 @@ public:
 	FOnTimelineFloat InterpFOVFunction{};
 	FOnTimelineFloat InterpSwordFunction{};
 	FOnTimelineEvent TimelineFinished{};
+	FOnTimelineEvent BloomFinished{};
+	FOnTimelineFloat InterpBloomEffect{};
 	class UTimelineComponent* m_Timeline;
+	class UTimelineComponent* m_PostBloomTimeline;
 	UFUNCTION()
 		void CharTimelineFloatReturn(float value);
 	UFUNCTION()
@@ -129,8 +134,13 @@ public:
 		class UCurveFloat* m_SwordCurve;
 	UPROPERTY(EditAnywhere, Category = "Timeline")
 		class UCurveFloat* m_FOVCurve;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+		class UCurveFloat* m_BloomCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class UCameraShake> m_CamShake = nullptr;
-
+	UFUNCTION()
+		void Bloom(float a);
+	UFUNCTION()
+		void Empty();
 };
 

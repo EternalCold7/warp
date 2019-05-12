@@ -62,7 +62,13 @@ AMyProjectCharacter::AMyProjectCharacter()
 	InterpSwordFunction.BindUFunction(this, FName("SwordTimelineFloatReturn"));
 	InterpFOVFunction.BindUFunction(this, FName("FOVTimelineFloatReturn"));
 	TimelineFinished.BindUFunction(this, FName("OnTimelineFinished"));
+
+	BloomFinished.BindUFunction(this,FName("Empty"));
+	InterpBloomEffect.BindUFunction(this,FName("Bloom"));
+
+
 	m_Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("Timeline"));
+	m_PostBloomTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PostBloom"));
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
@@ -173,8 +179,15 @@ void AMyProjectCharacter::BeginPlay() {
 		m_Timeline->SetLooping(false);
 		m_Timeline->SetIgnoreTimeDilation(true);
 	}
-
-
+	if (m_BloomCurve)
+	{
+		m_PostBloomTimeline->SetTimelineFinishedFunc(BloomFinished);
+		m_PostBloomTimeline->AddInterpFloat(m_BloomCurve, InterpBloomEffect);
+		m_PostBloomTimeline->SetLooping(false);
+		m_PostBloomTimeline->SetIgnoreTimeDilation(true);
+	}
+	if (m_MatParamCollection)
+		m_MatColInst = GetWorld()->GetParameterCollectionInstance(m_MatParamCollection);
 	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::FindCurrentEnemy, 0.01f, true);
 
 
@@ -190,8 +203,15 @@ void AMyProjectCharacter::FindCurrentEnemy() {
 	m_OverlapingMesh->GetActorsToOverlap(overlapingActors, TSubclassOf<ANPC>());
 	for (auto actor : overlapingActors) {
 		auto npc = Cast<ANPC>(actor);
-		auto distanceVector = GetActorLocation() - npc->GetActorLocation();
-		float distance = distanceVector.X * distanceVector.X + distanceVector.Y * distanceVector.Y + distanceVector.Z * distanceVector.Z;
+		auto PC =UGameplayStatics::GetPlayerController(GetWorld(), 0);
+		FVector2D sLoc;
+		PC->ProjectWorldLocationToScreen(GetActorLocation(), sLoc);
+		int32 x, y;
+		PC->GetViewportSize(x, y);
+		sLoc.X = -sLoc.X + (float)x;
+		sLoc.Y = -sLoc.Y + (float)y;
+
+		float distance = sLoc.X * sLoc.X + sLoc.Y * sLoc.Y;
 		enemies.Add(npc, distance);
 	}
 	int i = 0;
@@ -217,8 +237,8 @@ void AMyProjectCharacter::SetupWarpAnimation() {
 	m_CurrLocation = GetActorLocation();
 	m_SwordLocation = m_Sword->GetComponentLocation();
 	m_SwordRotation = m_Sword->GetComponentRotation();
-	/*if (m_MatParamCollection)
-		m_MatParamCollection->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);*/
+	if (m_MatColInst)
+		m_MatColInst->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);
 	m_Sword->DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true));
 	GetMesh()->GlobalAnimRateScale = KEK;
 	GetMesh()->SetVisibility(false);
@@ -272,14 +292,7 @@ void AMyProjectCharacter::SwordTimelineFloatReturn(float value)
 
 void AMyProjectCharacter::FOVTimelineFloatReturn(float value)
 {
-	/*auto to = EnemyToWarp->m_WarpLocation->GetComponentLocation();
-	auto camLoc = FollowCamera->GetComponentLocation();
-	FVector newLoc;
-	newLoc.X = UKismetMathLibrary::Ease(camLoc.X, to.X, value, EEasingFunc::ExpoIn);
-	newLoc.Y = UKismetMathLibrary::Ease(camLoc.Y, to.Y, value, EEasingFunc::ExpoIn);
-	newLoc.Z = UKismetMathLibrary::Ease(camLoc.Z, to.Z, value, EEasingFunc::ExpoIn);
-	FollowCamera->SetWorldLocation(newLoc);
-*/
+
 	FollowCamera->SetFieldOfView(value);
 }
 
@@ -307,6 +320,26 @@ void AMyProjectCharacter::OnTimelineFinished()
 
 	GetWorldTimerManager().SetTimer(m_TimerHandle, 0.2f, false);
 	GetWorld()->DestroyActor(clone);
+	
+	auto rot = GetMesh()->GetComponentRotation();
+
+	rot.Roll= 0;
+	auto rot2 = GetActorRotation();
+	rot2.Roll= 0;
+	GetMesh()->SetWorldRotation(rot);
+	SetActorRotation(rot2);
+	m_PostBloomTimeline->PlayFromStart();
+}
+
+void AMyProjectCharacter::Bloom(float a)
+{
+	if (m_MatColInst)
+		m_MatColInst->SetScalarParameterValue("BlueOpacityEffect", a);
+}
+
+void AMyProjectCharacter::Empty()
+{
+
 }
 
 void AMyProjectCharacter::Warp()

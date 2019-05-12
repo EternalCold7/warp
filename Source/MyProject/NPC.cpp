@@ -17,20 +17,21 @@ ANPC::ANPC()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	
-	m_WarpLocation = CreateDefaultSubobject<USceneComponent>("WarpLocation");
-	m_WidgetComponent = CreateDefaultSubobject<UWidgetComponent>("Widget");
+	m_WarpLocation = CreateDefaultSubobject<USceneComponent>(TEXT("WarpLocation"));
+	m_WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Widget"));
 	m_WidgetComponent->SetupAttachment(m_WarpLocation);
-
+	m_WarpLocation->SetupAttachment(RootComponent);
 	m_Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("Timeline"));
-
-	InterpFunction.BindUFunction(this, FName("TimelineFloatReturn"));
-	TimelineFinished.BindUFunction(this,FName("OnTimelineFinished"));
+	UE_LOG(LogTemp, Warning, TEXT("object warp location inited %s"), *GetName());
+	
 }
 
 // Called when the game starts or when spawned
 void ANPC::BeginPlay()
 {
+
+	InterpFunction.BindUFunction(this, FName("TimelineFloatReturn"));
+	TimelineFinished.BindUFunction(this, FName("OnTimelineFinished"));
 	Super::BeginPlay();
 	auto PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	m_Player = Cast<AMyProjectCharacter>(PC->GetPawn());
@@ -41,13 +42,13 @@ void ANPC::BeginPlay()
 		m_Timeline->SetIgnoreTimeDilation(true);
 	}
 	auto actorLoc = GetActorLocation();
-	actorLoc.Z += 30;
-	if(m_WarpLocation)
-		m_WarpLocation->SetWorldLocation(actorLoc);
-	else {
-		UE_LOG(LogTemp, Error, TEXT("NOT NPC WARP LOC"));
-	}
+	actorLoc.Z += 90;
+	auto a = GetName();
+
+	m_WarpLocation->SetWorldLocation(actorLoc);
+
 	m_WidgetComponent->SetWorldLocation(actorLoc);
+
 
 	GetWorldTimerManager().SetTimer(FuzeTimerHandle, this, &ANPC::SetTarget, 0.01f, true);
 }
@@ -95,6 +96,7 @@ void ANPC::TraceAndRotateWarpLocation() {
 	auto diff = hitRes.TraceStart - hitRes.TraceEnd;
 	auto distance = (diff.X * diff.X + diff.Y * diff.Y + diff.Z * diff.Z);
 	bool moreThanMinimum = distance >= 150.f;
+
 	m_WarpLocation->SetVisibility(moreThanMinimum, true);
 
 
