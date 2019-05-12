@@ -42,7 +42,11 @@ void ANPC::BeginPlay()
 	}
 	auto actorLoc = GetActorLocation();
 	actorLoc.Z += 30;
-	m_WarpLocation->SetWorldLocation(actorLoc);
+	if(m_WarpLocation)
+		m_WarpLocation->SetWorldLocation(actorLoc);
+	else {
+		UE_LOG(LogTemp, Error, TEXT("NOT NPC WARP LOC"));
+	}
 	m_WidgetComponent->SetWorldLocation(actorLoc);
 
 	GetWorldTimerManager().SetTimer(FuzeTimerHandle, this, &ANPC::SetTarget, 0.01f, true);

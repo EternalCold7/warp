@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Runtime/Engine/Classes/Components/TimelineComponent.h"
+
 #include "MyProjectCharacter.generated.h"
 
 UCLASS(config = Game)
@@ -130,5 +131,6 @@ public:
 		class UCurveFloat* m_FOVCurve;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class UCameraShake> m_CamShake = nullptr;
+
 };
 

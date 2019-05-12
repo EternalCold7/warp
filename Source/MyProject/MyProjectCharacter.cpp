@@ -219,11 +219,13 @@ void AMyProjectCharacter::SetupWarpAnimation() {
 	m_SwordRotation = m_Sword->GetComponentRotation();
 	/*if (m_MatParamCollection)
 		m_MatParamCollection->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);*/
-	
+	m_Sword->DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true));
 	GetMesh()->GlobalAnimRateScale = KEK;
 	GetMesh()->SetVisibility(false);
 	clone = CreatePostMesh(GetActorLocation());
+	
 	m_Timeline->PlayFromStart();
+
 }
 
 ASkeletalMeshActor* AMyProjectCharacter::CreatePostMesh(const FVector& pos) {
@@ -240,7 +242,7 @@ ASkeletalMeshActor* AMyProjectCharacter::CreatePostMesh(const FVector& pos) {
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(0, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(1, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->PlayAnimation(m_FadeAnimation,false);
-	postMesh->GetSkeletalMeshComponent()->SetPosition(0.3f);
+	postMesh->GetSkeletalMeshComponent()->SetPosition(0.5f);
 
 	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = 0.f;
 	return postMesh;
@@ -270,19 +272,22 @@ void AMyProjectCharacter::SwordTimelineFloatReturn(float value)
 
 void AMyProjectCharacter::FOVTimelineFloatReturn(float value)
 {
-	auto to = EnemyToWarp->m_WarpLocation->GetComponentLocation();
+	/*auto to = EnemyToWarp->m_WarpLocation->GetComponentLocation();
 	auto camLoc = FollowCamera->GetComponentLocation();
 	FVector newLoc;
 	newLoc.X = UKismetMathLibrary::Ease(camLoc.X, to.X, value, EEasingFunc::ExpoIn);
 	newLoc.Y = UKismetMathLibrary::Ease(camLoc.Y, to.Y, value, EEasingFunc::ExpoIn);
 	newLoc.Z = UKismetMathLibrary::Ease(camLoc.Z, to.Z, value, EEasingFunc::ExpoIn);
 	FollowCamera->SetWorldLocation(newLoc);
+*/
+	FollowCamera->SetFieldOfView(value);
 }
 
 void AMyProjectCharacter::OnTimelineFinished()
 {
 
-	m_Sword->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("SwordSocket"));
+	auto attachRule = FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
+	m_Sword->AttachToComponent(GetMesh(), attachRule, FName("SwordSocket"));
 
 	GetMesh()->SetVisibility(true);
 	GetMesh()->GlobalAnimRateScale = 1.f;
