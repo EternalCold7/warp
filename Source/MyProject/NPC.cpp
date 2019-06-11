@@ -89,6 +89,7 @@ void ANPC::TraceAndRotateWarpLocation() {
 	if (!m_Player)
 	{
 		UE_LOG(LogTemp, Error, TEXT("NO CHARACTER SETUPED"));
+		m_Player = Cast<AMyProjectCharacter>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetPawn());
 		return;
 	}
 	GetWorld()->LineTraceSingleByChannel(hitRes, location, m_Player->GetActorLocation(), ECollisionChannel::ECC_Visibility);
@@ -104,7 +105,7 @@ void ANPC::TraceAndRotateWarpLocation() {
 
 
 		auto dirVec = UKismetMathLibrary::GetDirectionUnitVector(location, hitRes.TraceEnd);
-		auto newWarpLoc = location + dirVec * 100;
+		auto newWarpLoc = location + dirVec * 350;
 		auto warpLocation = m_WarpLocation->GetComponentLocation();
 		newWarpLoc.Z = warpLocation.Z;
 		auto rotation = UKismetMathLibrary::FindLookAtRotation(warpLocation, hitRes.TraceEnd);

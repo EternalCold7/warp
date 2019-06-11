@@ -81,13 +81,15 @@ public:
 	class UColisionStaticMeshComponent * m_OverlapingMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
 		UStaticMeshComponent* m_Sword;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ParticleSystem")
+		class UParticleSystemComponent* m_ParticleFollowing;
 	UFUNCTION()
 	void FindCurrentEnemy();
 	float m_LowestLength;
 	class ANPC* EnemyToWarp;
 	virtual void BeginPlay() override;
 	FTimerHandle m_TimerHandle;
+	FTimerHandle m_AdditionalTimerHandle;
 	void SetupWarpAnimation();
 
 	FVector m_CurrLocation;
@@ -110,7 +112,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
 		float KEK = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
-		float LOL = 0;
+		float LOL = 1;
 
 	FOnTimelineFloat InterpCharFunction{};
 	FOnTimelineFloat InterpFOVFunction{};
@@ -142,5 +144,7 @@ public:
 		void Bloom(float a);
 	UFUNCTION()
 		void Empty();
+	void BackToPlaceSwordAndActorRotation();
+	void ChangeFlagsAfterAnimation();
 };
 

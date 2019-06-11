@@ -19,6 +19,7 @@
 #include "Runtime/Engine/Classes/Materials/MaterialParameterCollectionInstance.h"
 #include "Runtime/Engine/Classes/Animation/SkeletalMeshActor.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "Runtime/Engine/Classes/Particles/ParticleSystemComponent.h"
 //////////////////////////////////////////////////////////////////////////
 // AMyProjectCharacter
 
@@ -55,8 +56,14 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 	m_OverlapingMesh = CreateDefaultSubobject<UColisionStaticMeshComponent>("overlap mesh");
 	m_Sword = CreateDefaultSubobject<UStaticMeshComponent>("swor");
+	m_ParticleFollowing = CreateDefaultSubobject<UParticleSystemComponent>("FollowingParticle");
+
 
 	m_Sword->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, FName("SwordSocket"));
+	m_ParticleFollowing->AttachToComponent(m_Sword, FAttachmentTransformRules::KeepRelativeTransform, FName("SwordSocket"));
+
+	
+
 
 	InterpCharFunction.BindUFunction(this, FName("CharTimelineFloatReturn"));
 	InterpSwordFunction.BindUFunction(this, FName("SwordTimelineFloatReturn"));
@@ -190,6 +197,15 @@ void AMyProjectCharacter::BeginPlay() {
 		m_MatColInst = GetWorld()->GetParameterCollectionInstance(m_MatParamCollection);
 	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::FindCurrentEnemy, 0.01f, true);
 
+	if (ensure(m_ParticleFollowing)) {
+		m_ParticleFollowing->Deactivate();
+		if (ensure(m_Sword)) {
+			FVector max, min;
+			m_Sword->GetLocalBounds(max, min);
+			m_ParticleFollowing->SetRelativeLocation(FVector(max));
+		}
+
+	}
 
 }
 void AMyProjectCharacter::FindCurrentEnemy() {
@@ -240,7 +256,7 @@ void AMyProjectCharacter::SetupWarpAnimation() {
 	if (m_MatColInst)
 		m_MatColInst->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);
 	m_Sword->DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true));
-	GetMesh()->GlobalAnimRateScale = KEK;
+	GetMesh()->GlobalAnimRateScale = 0.3;
 	GetMesh()->SetVisibility(false);
 	clone = CreatePostMesh(GetActorLocation());
 	
@@ -262,9 +278,11 @@ ASkeletalMeshActor* AMyProjectCharacter::CreatePostMesh(const FVector& pos) {
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(0, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(1, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->PlayAnimation(m_FadeAnimation,false);
-	postMesh->GetSkeletalMeshComponent()->SetPosition(0.5f);
+	postMesh->GetSkeletalMeshComponent()->SetPosition(0.3f);
 
 	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = 0.f;
+	if (ensure(m_ParticleFollowing))
+		m_ParticleFollowing->Activate();
 	return postMesh;
 }
 
@@ -303,8 +321,9 @@ void AMyProjectCharacter::OnTimelineFinished()
 	m_Sword->AttachToComponent(GetMesh(), attachRule, FName("SwordSocket"));
 
 	GetMesh()->SetVisibility(true);
+	
 	GetMesh()->GlobalAnimRateScale = 1.f;
-	GetMesh()->SetPosition(1.2);
+	GetMesh()->SetPosition(0.7);
 	if (!m_CamShake) {
 		UE_LOG(LogTemp, Error, TEXT("No camera shake"));
 	}
@@ -313,22 +332,11 @@ void AMyProjectCharacter::OnTimelineFinished()
 
 	}
 
-	GetWorldTimerManager().SetTimer(m_TimerHandle, 0.84f, false);
-	CanWarp = true;
-	IsInWarp = false;
-	CanMove = true;
+	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::ChangeFlagsAfterAnimation, 0.84f, false);
 
-	GetWorldTimerManager().SetTimer(m_TimerHandle, 0.2f, false);
-	GetWorld()->DestroyActor(clone);
+
+	GetWorldTimerManager().SetTimer(m_AdditionalTimerHandle, this, &AMyProjectCharacter::BackToPlaceSwordAndActorRotation, 0.2f, false);
 	
-	auto rot = GetMesh()->GetComponentRotation();
-
-	rot.Roll= 0;
-	auto rot2 = GetActorRotation();
-	rot2.Roll= 0;
-	GetMesh()->SetWorldRotation(rot);
-	SetActorRotation(rot2);
-	m_PostBloomTimeline->PlayFromStart();
 }
 
 void AMyProjectCharacter::Bloom(float a)
@@ -354,6 +362,29 @@ void AMyProjectCharacter::Warp()
 	auto rot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), EnemyToWarp->GetActorLocation());
 	SetActorRotation(rot);
 	GetMesh()->SetPosition(0.3f);
-	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::SetupWarpAnimation, 0.5f);
+	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::SetupWarpAnimation, 0.5f,false);
+	
+}
+void AMyProjectCharacter::ChangeFlagsAfterAnimation() {
+	UE_LOG(LogTemp, Warning, TEXT("Here we are"));
+	CanWarp = true;
+	IsInWarp = false;
+	CanMove = true;
+}
+void AMyProjectCharacter::BackToPlaceSwordAndActorRotation() {
+	GetWorld()->DestroyActor(clone);
 
+	if (ensure(m_ParticleFollowing))
+		m_ParticleFollowing->Deactivate();
+
+
+	auto rot = GetMesh()->GetComponentRotation();
+	rot.Roll = 0;
+	auto rot2 = GetActorRotation();
+	rot2.Roll = 0;
+	GetMesh()->SetWorldRotation(rot);
+	SetActorRotation(rot2);
+
+	
+	m_PostBloomTimeline->PlayFromStart();
 }
