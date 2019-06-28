@@ -31,12 +31,13 @@ AMyProjectCharacter::AMyProjectCharacter()
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
-
+	
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
+	
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
@@ -53,6 +54,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	
 
 	m_OverlapingMesh = CreateDefaultSubobject<UColisionStaticMeshComponent>("overlap mesh");
 	m_Sword = CreateDefaultSubobject<UStaticMeshComponent>("swor");
@@ -69,15 +71,23 @@ AMyProjectCharacter::AMyProjectCharacter()
 	InterpSwordFunction.BindUFunction(this, FName("SwordTimelineFloatReturn"));
 	InterpFOVFunction.BindUFunction(this, FName("FOVTimelineFloatReturn"));
 	TimelineFinished.BindUFunction(this, FName("OnTimelineFinished"));
+	
+	WallRunningTickFunction.BindUFunction(this, FName("WallRunningTick"));
 
 	BloomFinished.BindUFunction(this,FName("Empty"));
 	InterpBloomEffect.BindUFunction(this,FName("Bloom"));
-
+	
 
 	m_Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("Timeline"));
 	m_PostBloomTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PostBloom"));
+	m_WallRunTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("WallRunTimeline"));
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+
+	m_WallCollisionCapsule = CreateDefaultSubobject<UCapsuleComponent>("WallColisionCapsule");
+	m_WallCollisionCapsule->AttachToComponent(GetRootComponent(),FAttachmentTransformRules::KeepRelativeTransform);
+	m_WallCollisionCapsule->OnComponentBeginOverlap.AddDynamic(this,&AMyProjectCharacter::OnCapsuleBeginOverlap);
+	m_WallCollisionCapsule->OnComponentEndOverlap.AddDynamic(this,&AMyProjectCharacter::OnCapsuleEndOverlap);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -85,9 +95,11 @@ AMyProjectCharacter::AMyProjectCharacter()
 
 void AMyProjectCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
+
+	
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMyProjectCharacter::DoubleJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction("Warp", IE_Pressed, this, &AMyProjectCharacter::Warp);
 
@@ -109,6 +121,9 @@ void AMyProjectCharacter::SetupPlayerInputComponent(class UInputComponent* Playe
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AMyProjectCharacter::OnResetVR);
 }
+
+
+
 
 
 void AMyProjectCharacter::OnResetVR()
@@ -193,6 +208,12 @@ void AMyProjectCharacter::BeginPlay() {
 		m_PostBloomTimeline->SetLooping(false);
 		m_PostBloomTimeline->SetIgnoreTimeDilation(true);
 	}
+
+	if (m_WallRunningCurve) {
+		m_WallRunTimeline->AddInterpFloat(m_WallRunningCurve,WallRunningTickFunction,FName("WallRun"));
+		m_WallRunTimeline->SetLooping(false);
+		m_WallRunTimeline->SetIgnoreTimeDilation(true);
+	}
 	if (m_MatParamCollection)
 		m_MatColInst = GetWorld()->GetParameterCollectionInstance(m_MatParamCollection);
 	GetWorldTimerManager().SetTimer(m_TimerHandle, this, &AMyProjectCharacter::FindCurrentEnemy, 0.01f, true);
@@ -219,6 +240,9 @@ void AMyProjectCharacter::FindCurrentEnemy() {
 	m_OverlapingMesh->GetActorsToOverlap(overlapingActors, TSubclassOf<ANPC>());
 	for (auto actor : overlapingActors) {
 		auto npc = Cast<ANPC>(actor);
+		if (!npc) {
+			continue;
+		}
 		auto PC =UGameplayStatics::GetPlayerController(GetWorld(), 0);
 		FVector2D sLoc;
 		PC->ProjectWorldLocationToScreen(GetActorLocation(), sLoc);
@@ -233,7 +257,7 @@ void AMyProjectCharacter::FindCurrentEnemy() {
 	int i = 0;
 	for (auto npc : enemies) {
 		npc.Key->ShowCross = false;
-		UE_LOG(LogTemp, Warning, TEXT("enemy %s"), *npc.Key->GetName());
+		
 		if (i == 0) {
 			m_LowestLength = npc.Value;
 			EnemyToWarp = npc.Key;
@@ -371,6 +395,7 @@ void AMyProjectCharacter::ChangeFlagsAfterAnimation() {
 	IsInWarp = false;
 	CanMove = true;
 }
+
 void AMyProjectCharacter::BackToPlaceSwordAndActorRotation() {
 	GetWorld()->DestroyActor(clone);
 
@@ -387,4 +412,77 @@ void AMyProjectCharacter::BackToPlaceSwordAndActorRotation() {
 
 	
 	m_PostBloomTimeline->PlayFromStart();
+}
+
+
+void AMyProjectCharacter::DoubleJump()
+{
+	if (CurrentJumsCount <= 1) {
+		ACharacter::LaunchCharacter(FVector(0,0,JumpHeight),false,true);
+		CurrentJumsCount++;
+		isJumping = true;
+	}
+	//isJumping = false;
+}
+
+void AMyProjectCharacter::Landed(const FHitResult& hit)
+{
+	Super::Landed(hit);
+	CurrentJumsCount = 0;
+	isJumping = false;
+}
+
+void AMyProjectCharacter::Tick(float delta)
+{
+	Super::Tick(delta);
+	if (GetMesh()->GlobalAnimRateScale > 0.9f)
+		isJumping = false;
+}
+
+
+void AMyProjectCharacter::OnCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	m_WallRunTimeline->Deactivate();
+	if (OtherActor->ActorHasTag("RunWall")) {
+		GetCharacterMovement()->GravityScale = 1.f;
+		GetCharacterMovement()->SetPlaneConstraintNormal({ 0,0,0 });
+		IsOnWall = false;
+	}
+
+
+}
+void AMyProjectCharacter::WallRunningTick(float delta)
+{
+	if (UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetInputKeyTimeDown(FKey("Spacebar")) > 0.f) {
+		if (IsOnWall) {
+			
+			GetCharacterMovement()->GravityScale = 0.3f;
+			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.f, 0.f, 1.f));
+			GetCharacterMovement()->AddForce(m_PlayerDirection * 2000);
+			return;
+		}
+		
+
+	}
+	
+	GetCharacterMovement()->GravityScale = 1.f;
+	GetCharacterMovement()->SetPlaneConstraintNormal({0,0,0});
+	IsOnWall = false;
+	
+
+}
+
+void AMyProjectCharacter::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+
+	
+	m_PlayerDirection = GetFollowCamera()->GetForwardVector();
+	bool canRun = OtherActor->ActorHasTag(FName("RunWall")) ;
+	bool can = GetCharacterMovement()->IsFalling();
+	if (canRun && can) {
+		IsOnWall = true;
+		m_WallRunTimeline->PlayFromStart();
+		UE_LOG(LogTemp, Warning, TEXT("Can run"));
+	}
+
 }

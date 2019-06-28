@@ -37,41 +37,49 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool CanMove = true;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool IsOnWall = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		uint8 MaxJumpsCount = 2;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		uint8 CurrentJumsCount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		UCapsuleComponent* m_WallCollisionCapsule;
+	//virtual void OnLanded(const FHitResult& result) override;
+	UFUNCTION()
+		void DoubleJump();
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+		float JumpHeight = 600.f;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool isJumping = false;
+	virtual void Landed(const FHitResult& hit) override;
+	virtual void Tick(float delta);
 protected:
 
-	/** Resets HMD orientation in VR. */
 	void OnResetVR();
 
-	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 
-	/** Called for side to side input */
 	void MoveRight(float Value);
 
-	/**
-	 * Called via input to turn at a given rate.
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
 	void TurnAtRate(float Rate);
 
-	/**
-	 * Called via input to turn look up/down at a given rate.
-	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
-	 */
+
 	void LookUpAtRate(float Rate);
 
-	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 
-	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
 protected:
-	// APawn interface
+
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	// End of APawn interface
+
 
 public:
+	UFUNCTION()
+	void OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
@@ -109,10 +117,6 @@ public:
 
 	class ASkeletalMeshActor* CreatePostMesh(const FVector& pos);
 	ASkeletalMeshActor* clone = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
-		float KEK = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Anim")
-		float LOL = 1;
 
 	FOnTimelineFloat InterpCharFunction{};
 	FOnTimelineFloat InterpFOVFunction{};
@@ -121,7 +125,10 @@ public:
 	FOnTimelineEvent BloomFinished{};
 	FOnTimelineFloat InterpBloomEffect{};
 	class UTimelineComponent* m_Timeline;
-	class UTimelineComponent* m_PostBloomTimeline;
+	UTimelineComponent* m_PostBloomTimeline;
+	UTimelineComponent* m_WallRunTimeline;
+	FOnTimelineFloat WallRunningTickFunction{};
+
 	UFUNCTION()
 		void CharTimelineFloatReturn(float value);
 	UFUNCTION()
@@ -138,6 +145,9 @@ public:
 		class UCurveFloat* m_FOVCurve;
 	UPROPERTY(EditAnywhere, Category = "Timeline")
 		class UCurveFloat* m_BloomCurve;
+	UPROPERTY(EditAnywhere, Category = "Timeline")
+		class UCurveFloat* m_WallRunningCurve;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class UCameraShake> m_CamShake = nullptr;
 	UFUNCTION()
@@ -146,5 +156,10 @@ public:
 		void Empty();
 	void BackToPlaceSwordAndActorRotation();
 	void ChangeFlagsAfterAnimation();
+	UFUNCTION()
+	void WallRunningTick(float delta);
+	UPROPERTY()
+	FVector m_PlayerDirection;
+
 };
 
