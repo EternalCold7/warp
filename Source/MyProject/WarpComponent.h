@@ -33,9 +33,14 @@ public:
 	FVector m_SwordLocation;
 	FRotator m_SwordRotation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UMaterialParameterCollection* m_MatParamCollection;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Animation")
+	float LaunchAnimPosition = 0.3f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+		float MeshContinuePosition = 0.7f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+		float PostMeshScaleRateCreation = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+		float ReleaseScaleRate= 0.5f;
 
 	class UMaterialParameterCollectionInstance* m_MatColInst;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
@@ -53,10 +58,9 @@ public:
 	FOnTimelineFloat InterpFOVFunction{};
 	FOnTimelineFloat InterpSwordFunction{};
 	FOnTimelineEvent TimelineFinished{};
-	FOnTimelineEvent BloomFinished{};
-	FOnTimelineFloat InterpBloomEffect{};
+
 	class UTimelineComponent* m_Timeline;
-	UTimelineComponent* m_PostBloomTimeline;
+
 	FTimerHandle m_TimerHandle;
 
 	UFUNCTION()
@@ -73,8 +77,7 @@ public:
 		class UCurveFloat* m_SwordCurve;
 	UPROPERTY(EditAnywhere, Category = "Timeline")
 		class UCurveFloat* m_FOVCurve;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_BloomCurve;
+
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -83,11 +86,12 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-
+	float FindEnemyDistanceViaViewport();
+	float FindEnemyDistance(const ANPC * npc);
 public:	
 	void SetupWarpAnimation();
-	// Called every frame
+
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	void Bloom(float a);
+
 	void Warp();
 };

@@ -16,6 +16,7 @@
 #include "Camera/CameraComponent.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 #include "Runtime/Engine/Classes/Animation/SkeletalMeshActor.h"
+#include "Runtime/Engine/Classes/GameFramework/SpringArmComponent.h"
 // Sets default values for this component's properties
 UWarpComponent::UWarpComponent()
 {
@@ -25,7 +26,7 @@ UWarpComponent::UWarpComponent()
 
 
 	m_ParticleFollowing = CreateDefaultSubobject<UParticleSystemComponent>("FollowingParticle");
-
+	m_ParticleFollowing->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
 
 
 	
@@ -38,13 +39,7 @@ UWarpComponent::UWarpComponent()
 	InterpFOVFunction.BindUFunction(this, FName("FOVTimelineFloatReturn"));
 	TimelineFinished.BindUFunction(this, FName("OnTimelineFinished"));
 
-
-	
-	InterpBloomEffect.BindUFunction(this, FName("Bloom"));
-
-
 	m_Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("Timeline"));
-	m_PostBloomTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PostBloom"));
 
 }
 
@@ -63,15 +58,9 @@ void UWarpComponent::FindCurrentEnemy()
 		if (!npc) {
 			continue;
 		}
-		auto PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-		FVector2D sLoc;
-		PC->ProjectWorldLocationToScreen(m_ProjectCharacter->GetActorLocation(), sLoc);
-		int32 x, y;
-		PC->GetViewportSize(x, y);
-		sLoc.X = -sLoc.X + (float)x;
-		sLoc.Y = -sLoc.Y + (float)y;
+		auto distance = FindEnemyDistanceViaViewport();
 
-		float distance = sLoc.X * sLoc.X + sLoc.Y * sLoc.Y;
+		//auto distance = FindEnemyDistance(npc);
 		enemies.Add(npc, distance);
 	}
 	int i = 0;
@@ -109,9 +98,9 @@ ASkeletalMeshActor* UWarpComponent::CreatePostMesh(const FVector& pos)
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(0, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->SetMaterial(1, m_FadeMaterial);
 	postMesh->GetSkeletalMeshComponent()->PlayAnimation(m_FadeAnimation, false);
-	postMesh->GetSkeletalMeshComponent()->SetPosition(0.3f);
+	postMesh->GetSkeletalMeshComponent()->SetPosition(LaunchAnimPosition);
 
-	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = 0.f;
+	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = PostMeshScaleRateCreation;
 	if (ensure(m_ParticleFollowing))
 		m_ParticleFollowing->Activate();
 	return postMesh;
@@ -144,13 +133,15 @@ void UWarpComponent::FOVTimelineFloatReturn(float value)
 
 void UWarpComponent::OnTimelineFinished()
 {
+
+
 	auto attachRule = FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
 	m_ProjectCharacter->m_Sword->AttachToComponent(m_ProjectCharacter->GetMesh(), attachRule, FName("SwordSocket"));
 
 	m_ProjectCharacter->GetMesh()->SetVisibility(true);
-
+	
 	m_ProjectCharacter->GetMesh()->GlobalAnimRateScale = 1.f;
-	m_ProjectCharacter->GetMesh()->SetPosition(0.7);
+	m_ProjectCharacter->GetMesh()->SetPosition(MeshContinuePosition);
 	if (!m_CamShake) {
 		UE_LOG(LogTemp, Error, TEXT("No camera shake"));
 	}
@@ -163,6 +154,10 @@ void UWarpComponent::OnTimelineFinished()
 
 
 	GetWorld()->GetTimerManager().SetTimer(m_AdditionalTimerHandle, this, &UWarpComponent::BackToPlaceSwordAndActorRotation, 0.2f, false);
+	UE_LOG(LogTemp, Warning, TEXT("Target arm length %f"), m_ProjectCharacter->GetCameraBoom()->TargetArmLength);
+	m_ProjectCharacter->GetCameraBoom()->TargetArmLength = 400.f;
+	if(m_ParticleFollowing)
+		m_ParticleFollowing->Deactivate();
 }
 
 // Called when the game starts
@@ -179,23 +174,14 @@ void UWarpComponent::BeginPlay()
 		m_Timeline->SetLooping(false);
 		m_Timeline->SetIgnoreTimeDilation(true);
 	}
-	if (m_BloomCurve)
-	{
-		
-		m_PostBloomTimeline->AddInterpFloat(m_BloomCurve, InterpBloomEffect);
-		m_PostBloomTimeline->SetLooping(false);
-		m_PostBloomTimeline->SetIgnoreTimeDilation(true);
-	}
 
 	
-	if (m_MatParamCollection)
-		m_MatColInst = GetWorld()->GetParameterCollectionInstance(m_MatParamCollection);
+	
 
 	GetWorld()->GetTimerManager().SetTimer(m_TimerHandle, this, &UWarpComponent::FindCurrentEnemy, 0.01f, true);
 
 	
 	if (ensure(m_ParticleFollowing)) {
-		m_ParticleFollowing->Deactivate();
 		if (ensure(m_ProjectCharacter->m_Sword)) {
 			FVector max, min;
 			m_ProjectCharacter->m_Sword->GetLocalBounds(max, min);
@@ -205,6 +191,28 @@ void UWarpComponent::BeginPlay()
 	}
 
 	
+}
+
+float UWarpComponent::FindEnemyDistanceViaViewport()
+{
+	auto PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	FVector2D sLoc;
+	PC->ProjectWorldLocationToScreen(m_ProjectCharacter->GetActorLocation(), sLoc);
+	int32 x, y;
+	PC->GetViewportSize(x, y);
+	sLoc.X = -sLoc.X + (float)x;
+	sLoc.Y = -sLoc.Y + (float)y;
+
+	return sLoc.X * sLoc.X + sLoc.Y * sLoc.Y;
+}
+
+float UWarpComponent::FindEnemyDistance(const ANPC* npc)
+{
+	auto source = m_ProjectCharacter->GetActorLocation();
+	auto dest = npc->m_WarpLocation->GetComponentLocation();
+	auto l = dest - source;
+
+	return (l.X * l.X + l.Y * l.Y + l.Z * l.Z) + 100.f;
 }
 
 
@@ -223,7 +231,7 @@ void UWarpComponent::BackToPlaceSwordAndActorRotation() {
 	m_ProjectCharacter->SetActorRotation(rot2);
 
 
-	m_PostBloomTimeline->PlayFromStart();
+
 }
 
 
@@ -243,11 +251,9 @@ void UWarpComponent::Warp()
 	/*CanWarp = false;
 	IsInWarp = true;
 	CanMove = false;*/
-
-
 	auto rot = UKismetMathLibrary::FindLookAtRotation(m_ProjectCharacter->GetActorLocation(), EnemyToWarp->GetActorLocation());
 	m_ProjectCharacter->SetActorRotation(rot);
-	m_ProjectCharacter->GetMesh()->SetPosition(0.3f);
+	m_ProjectCharacter->GetMesh()->SetPosition(LaunchAnimPosition);
 	GetWorld()->GetTimerManager().SetTimer(m_TimerHandle, this, &UWarpComponent::SetupWarpAnimation, 0.5f, false);
 }
 
@@ -259,15 +265,10 @@ void UWarpComponent::SetupWarpAnimation() {
 	if (m_MatColInst)
 		m_MatColInst->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);
 	m_ProjectCharacter->m_Sword->DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true));
-	m_ProjectCharacter->GetMesh()->GlobalAnimRateScale = 0.5;
+	m_ProjectCharacter->GetMesh()->GlobalAnimRateScale = ReleaseScaleRate;
 	m_ProjectCharacter->GetMesh()->SetVisibility(false);
 	clone = CreatePostMesh(m_ProjectCharacter->GetActorLocation());
 
 	m_Timeline->PlayFromStart();
 
-}
-void UWarpComponent::Bloom(float a)
-{
-	if (m_MatColInst)
-		m_MatColInst->SetScalarParameterValue("BlueOpacityEffect", a);
 }
