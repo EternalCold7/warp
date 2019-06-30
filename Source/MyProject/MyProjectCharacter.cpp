@@ -280,7 +280,7 @@ void AMyProjectCharacter::SetupWarpAnimation() {
 	if (m_MatColInst)
 		m_MatColInst->SetScalarParameterValue(FName("BlueOpacityEffect"), 1.f);
 	m_Sword->DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, true));
-	GetMesh()->GlobalAnimRateScale = 0.3;
+	GetMesh()->GlobalAnimRateScale = 0.5;
 	GetMesh()->SetVisibility(false);
 	clone = CreatePostMesh(GetActorLocation());
 	
@@ -340,6 +340,7 @@ void AMyProjectCharacter::FOVTimelineFloatReturn(float value)
 
 void AMyProjectCharacter::OnTimelineFinished()
 {
+
 
 	auto attachRule = FAttachmentTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld, true);
 	m_Sword->AttachToComponent(GetMesh(), attachRule, FName("SwordSocket"));
@@ -422,7 +423,6 @@ void AMyProjectCharacter::DoubleJump()
 		CurrentJumsCount++;
 		isJumping = true;
 	}
-	//isJumping = false;
 }
 
 void AMyProjectCharacter::Landed(const FHitResult& hit)
@@ -430,6 +430,7 @@ void AMyProjectCharacter::Landed(const FHitResult& hit)
 	Super::Landed(hit);
 	CurrentJumsCount = 0;
 	isJumping = false;
+	IsOnWall = false;
 }
 
 void AMyProjectCharacter::Tick(float delta)
