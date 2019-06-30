@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Runtime/Engine/Classes/Components/TimelineComponent.h"
-
 #include "MyProjectCharacter.generated.h"
 
 UCLASS(config = Game)
@@ -16,25 +15,23 @@ class AMyProjectCharacter : public ACharacter
 		/** Camera boom positioning the camera behind the character */
 		UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class USpringArmComponent* CameraBoom;
-
+	
 	/** Follow camera */
+	
+public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class UCameraComponent* FollowCamera;
-public:
 	AMyProjectCharacter();
-
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
+	
+	UTimelineComponent* m_WallRunTimeline;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 		float BaseTurnRate;
-
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 		float BaseLookUpRate;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool IsInWarp = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool CanWarp = true;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool CanMove = true;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -52,6 +49,8 @@ public:
 		float JumpHeight = 600.f;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool isJumping = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	class UWarpComponent* m_WarpComponent;
 	virtual void Landed(const FHitResult& hit) override;
 	virtual void Tick(float delta);
 protected:
@@ -87,79 +86,19 @@ public:
 	void Warp();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Overlaping")
 	class UColisionStaticMeshComponent * m_OverlapingMesh;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
-		UStaticMeshComponent* m_Sword;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ParticleSystem")
-		class UParticleSystemComponent* m_ParticleFollowing;
-	UFUNCTION()
-	void FindCurrentEnemy();
-	float m_LowestLength;
-	class ANPC* EnemyToWarp;
+
+
 	virtual void BeginPlay() override;
-	FTimerHandle m_TimerHandle;
-	FTimerHandle m_AdditionalTimerHandle;
-	void SetupWarpAnimation();
 
-	FVector m_CurrLocation;
-	FVector m_SwordLocation;
-	FRotator m_SwordRotation;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		class UMaterialParameterCollection* m_MatParamCollection;
-
-
-	class UMaterialParameterCollectionInstance* m_MatColInst;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
-		USkeletalMesh* m_PostMesh;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
-		class UMaterialInterface* m_FadeMaterial;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
-		class UAnimationAsset* m_FadeAnimation;
-
-	class ASkeletalMeshActor* CreatePostMesh(const FVector& pos);
-	ASkeletalMeshActor* clone = nullptr;
-
-	FOnTimelineFloat InterpCharFunction{};
-	FOnTimelineFloat InterpFOVFunction{};
-	FOnTimelineFloat InterpSwordFunction{};
-	FOnTimelineEvent TimelineFinished{};
-	FOnTimelineEvent BloomFinished{};
-	FOnTimelineFloat InterpBloomEffect{};
-	class UTimelineComponent* m_Timeline;
-	UTimelineComponent* m_PostBloomTimeline;
-	UTimelineComponent* m_WallRunTimeline;
 	FOnTimelineFloat WallRunningTickFunction{};
 
-	UFUNCTION()
-		void CharTimelineFloatReturn(float value);
-	UFUNCTION()
-		void SwordTimelineFloatReturn(float value);
-	UFUNCTION()
-		void FOVTimelineFloatReturn(float value);
-	UFUNCTION()
-		void OnTimelineFinished();
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_CharCurve;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_SwordCurve;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_FOVCurve;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_BloomCurve;
-	UPROPERTY(EditAnywhere, Category = "Timeline")
-		class UCurveFloat* m_WallRunningCurve;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<class UCameraShake> m_CamShake = nullptr;
-	UFUNCTION()
-		void Bloom(float a);
-	UFUNCTION()
-		void Empty();
-	void BackToPlaceSwordAndActorRotation();
+	class UCurveFloat* m_WallRunningCurve;
 	void ChangeFlagsAfterAnimation();
 	UFUNCTION()
 	void WallRunningTick(float delta);
 	UPROPERTY()
 	FVector m_PlayerDirection;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
+		UStaticMeshComponent* m_Sword;
 };
 
