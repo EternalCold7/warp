@@ -59,8 +59,8 @@ AMyProjectCharacter::AMyProjectCharacter()
 	m_WarpComponent->m_ProjectCharacter = this;
 
 	
-	m_WarpComponent->AttachToComponent(GetRootComponent(),FAttachmentTransformRules::KeepRelativeTransform);
-	
+	m_WarpComponent->AttachToComponent(GetCapsuleComponent(),FAttachmentTransformRules::KeepRelativeTransform);
+
 	WallRunningTickFunction.BindUFunction(this, FName("WallRunningTick"));
 	
 
@@ -165,7 +165,7 @@ void AMyProjectCharacter::MoveRight(float Value)
 
 void AMyProjectCharacter::BeginPlay() {
 	Super::BeginPlay();
-
+	m_WarpComponent->SetWorldLocation(GetRootComponent()->GetComponentLocation());
 	if (m_WallRunningCurve) {
 		m_WallRunTimeline->AddInterpFloat(m_WallRunningCurve, WallRunningTickFunction, FName("WallRun"));
 		m_WallRunTimeline->SetLooping(false);

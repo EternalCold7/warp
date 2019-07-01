@@ -25,11 +25,7 @@ UWarpComponent::UWarpComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 
-	m_ParticleFollowing = CreateDefaultSubobject<UParticleSystemComponent>("FollowingParticle");
-	m_ParticleFollowing->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
 
-
-	
 	bEditableWhenInherited = true;
 
 
@@ -40,6 +36,10 @@ UWarpComponent::UWarpComponent()
 	TimelineFinished.BindUFunction(this, FName("OnTimelineFinished"));
 
 	m_Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("Timeline"));
+
+	m_ParticleSystem = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("FollowingParticle"));
+
+	m_ParticleSystem->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
 
 }
 
@@ -85,6 +85,9 @@ void UWarpComponent::FindCurrentEnemy()
 
 ASkeletalMeshActor* UWarpComponent::CreatePostMesh(const FVector& pos)
 {
+	if (m_ParticleSystem) {
+		m_ParticleSystem->Activate();
+	}
 	FActorSpawnParameters a;
 	a.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	a.bNoFail = true;
@@ -101,8 +104,8 @@ ASkeletalMeshActor* UWarpComponent::CreatePostMesh(const FVector& pos)
 	postMesh->GetSkeletalMeshComponent()->SetPosition(LaunchAnimPosition);
 
 	postMesh->GetSkeletalMeshComponent()->GlobalAnimRateScale = PostMeshScaleRateCreation;
-	if (ensure(m_ParticleFollowing))
-		m_ParticleFollowing->Activate();
+
+
 	return postMesh;
 }
 
@@ -156,15 +159,14 @@ void UWarpComponent::OnTimelineFinished()
 	GetWorld()->GetTimerManager().SetTimer(m_AdditionalTimerHandle, this, &UWarpComponent::BackToPlaceSwordAndActorRotation, 0.2f, false);
 	UE_LOG(LogTemp, Warning, TEXT("Target arm length %f"), m_ProjectCharacter->GetCameraBoom()->TargetArmLength);
 	m_ProjectCharacter->GetCameraBoom()->TargetArmLength = 400.f;
-	if(m_ParticleFollowing)
-		m_ParticleFollowing->Deactivate();
+
 }
 
 // Called when the game starts
 void UWarpComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	m_ParticleFollowing->AttachToComponent(m_ProjectCharacter->m_Sword, FAttachmentTransformRules::KeepRelativeTransform, FName("SwordSocket"));
+
 	if (m_CharCurve && m_FOVCurve && m_SwordCurve) {
 		m_Timeline->SetTimelineFinishedFunc(TimelineFinished);
 		m_Timeline->AddInterpFloat(m_CharCurve, InterpCharFunction, FName("Alpha"));
@@ -174,23 +176,13 @@ void UWarpComponent::BeginPlay()
 		m_Timeline->SetLooping(false);
 		m_Timeline->SetIgnoreTimeDilation(true);
 	}
-
-	
 	
 
 	GetWorld()->GetTimerManager().SetTimer(m_TimerHandle, this, &UWarpComponent::FindCurrentEnemy, 0.01f, true);
 
-	
-	if (ensure(m_ParticleFollowing)) {
-		if (ensure(m_ProjectCharacter->m_Sword)) {
-			FVector max, min;
-			m_ProjectCharacter->m_Sword->GetLocalBounds(max, min);
-			m_ParticleFollowing->SetRelativeLocation(FVector(max));
-		}
 
-	}
-
-	
+	check(m_ParticleSystem);
+	m_ParticleSystem->Deactivate();
 }
 
 float UWarpComponent::FindEnemyDistanceViaViewport()
@@ -219,10 +211,8 @@ float UWarpComponent::FindEnemyDistance(const ANPC* npc)
 void UWarpComponent::BackToPlaceSwordAndActorRotation() {
 	GetWorld()->DestroyActor(clone);
 
-	if (ensure(m_ParticleFollowing))
-		m_ParticleFollowing->Deactivate();
-
-
+	check(m_ParticleSystem);
+	m_ParticleSystem->Deactivate();
 	auto rot = m_ProjectCharacter->GetMesh()->GetComponentRotation();
 	rot.Roll = 0;
 	auto rot2 = m_ProjectCharacter->GetActorRotation();

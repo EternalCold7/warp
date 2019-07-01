@@ -13,6 +13,7 @@ class MYPROJECT_API UWarpComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
+
 public:	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		class AMyProjectCharacter* m_ProjectCharacter;
@@ -20,8 +21,7 @@ public:
 	// Sets default values for this component's properties
 	UWarpComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ParticleSystem")
-		class UParticleSystemComponent* m_ParticleFollowing;
+
 
 	FTimerHandle m_AdditionalTimerHandle;
 	UFUNCTION()
@@ -83,6 +83,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		TSubclassOf<class UCameraShake> m_CamShake = nullptr;
 	void BackToPlaceSwordAndActorRotation();
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite)
+		class UParticleSystemComponent * m_ParticleSystem;
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
