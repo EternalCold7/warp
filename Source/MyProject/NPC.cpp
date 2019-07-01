@@ -110,7 +110,7 @@ void ANPC::TraceAndRotateWarpLocation() {
 		newWarpLoc.Z = warpLocation.Z;
 		auto rotation = UKismetMathLibrary::FindLookAtRotation(warpLocation, hitRes.TraceEnd);
 
-		m_WarpLocation->SetWorldLocationAndRotation(newWarpLoc, rotation);
+		m_WarpLocation->SetWorldRotation(rotation);
 
 		auto widgetLoc = m_WidgetComponent->GetComponentLocation();
 		auto newWidgetLoc = location + dirVec * 30;
