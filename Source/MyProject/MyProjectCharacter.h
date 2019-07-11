@@ -37,6 +37,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool IsOnWall = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		bool IsAttacking = false;
+	float attackTime = 2.1;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		uint8 MaxJumpsCount = 2;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		uint8 CurrentJumsCount = 0;
@@ -78,6 +81,7 @@ protected:
 public:
 	UFUNCTION()
 	void OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
 	void OnCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -100,5 +104,9 @@ public:
 	FVector m_PlayerDirection;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sword")
 		UStaticMeshComponent* m_Sword;
+	UFUNCTION()
+		void Attack();
+	UFUNCTION()
+		void SwordColision(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };
 

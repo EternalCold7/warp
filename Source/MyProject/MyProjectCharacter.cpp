@@ -70,6 +70,7 @@ AMyProjectCharacter::AMyProjectCharacter()
 	m_WallCollisionCapsule->AttachToComponent(GetRootComponent(),FAttachmentTransformRules::KeepRelativeTransform);
 	m_WallCollisionCapsule->OnComponentBeginOverlap.AddDynamic(this,&AMyProjectCharacter::OnCapsuleBeginOverlap);
 	m_WallCollisionCapsule->OnComponentEndOverlap.AddDynamic(this,&AMyProjectCharacter::OnCapsuleEndOverlap);
+	m_Sword->OnComponentBeginOverlap.AddDynamic(this, &AMyProjectCharacter::SwordColision);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -94,6 +95,7 @@ void AMyProjectCharacter::SetupPlayerInputComponent(class UInputComponent* Playe
 	PlayerInputComponent->BindTouch(IE_Released, this, &AMyProjectCharacter::TouchStopped);
 
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AMyProjectCharacter::OnResetVR);
+	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMyProjectCharacter::Attack);
 }
 
 
@@ -266,5 +268,16 @@ void AMyProjectCharacter::OnCapsuleBeginOverlap(UPrimitiveComponent* OverlappedC
 		m_WallRunTimeline->PlayFromStart();
 		UE_LOG(LogTemp, Warning, TEXT("Can run"));
 	}
+
+}
+void AMyProjectCharacter::Attack() {
+	
+	IsAttacking = !IsAttacking;
+	
+}
+void AMyProjectCharacter::SwordColision(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor->ActorHasTag("Strikable"))
+		UE_LOG(LogTemp, Warning, TEXT("SWORD COLISION"));
 
 }
